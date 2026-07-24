@@ -46,7 +46,7 @@ export function useAuth() {
 
   const userId = sessionUser?.id || (isDemoMode ? DEMO_USER_ID : null);
 
-  // Fetch User Profile from Supabase
+  // Fetch User Profile from Supabase with auto-upsert
   const profileQuery = useQuery({
     queryKey: ["profile", userId],
     queryFn: async (): Promise<Profile> => {
@@ -58,29 +58,48 @@ export function useAuth() {
         };
       }
 
+      const userEmail = sessionUser.email || "User";
+      const userName = sessionUser.user_metadata?.full_name || userEmail.split("@")[0];
+      const avatarUrl = sessionUser.user_metadata?.avatar_url || null;
+
+      // Upsert profile row in Supabase database
       const { data, error } = await (supabase.from("profiles") as any)
-        .select("*")
-        .eq("id", sessionUser.id)
+        .upsert(
+          {
+            id: sessionUser.id,
+            full_name: userName,
+            avatar_url: avatarUrl,
+          },
+          { onConflict: "id", ignoreDuplicates: true }
+        )
+        .select()
         .single();
 
       if (error || !data) {
-        const userEmail = sessionUser.email || "User";
-        const userName = sessionUser.user_metadata?.full_name || userEmail.split("@")[0];
+        // Fallback fetch if upsert ignored
+        const { data: fetchedData } = await (supabase.from("profiles") as any)
+          .select("*")
+          .eq("id", sessionUser.id)
+          .single();
+
+        if (fetchedData) return fetchedData as Profile;
+
         return {
           id: sessionUser.id,
           full_name: userName,
-          avatar_url: sessionUser.user_metadata?.avatar_url || null,
+          avatar_url: avatarUrl,
           active_categories: ["habits", "expenses", "mood", "health"],
           dark_mode: true,
           created_at: new Date().toISOString(),
         };
       }
+
       return data as Profile;
     },
     enabled: isAuthReady && !!userId,
   });
 
-  // Update active categories
+  // Update active categories with persistent upsert
   const updateCategoriesMutation = useMutation({
     mutationFn: async (categories: ("habits" | "expenses" | "mood" | "health")[]) => {
       if (!sessionUser) {
@@ -89,8 +108,13 @@ export function useAuth() {
       }
 
       const { data, error } = await (supabase.from("profiles") as any)
-        .update({ active_categories: categories })
-        .eq("id", sessionUser.id)
+        .upsert(
+          {
+            id: sessionUser.id,
+            active_categories: categories,
+          },
+          { onConflict: "id" }
+        )
         .select()
         .single();
 
