@@ -105,9 +105,27 @@ export function useMoodLogs(userId: string) {
     },
   });
 
+  const deleteMoodLogMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const currentLogs = moodQuery.data || getLocalMoodLogs(userId);
+      const updatedLogs = currentLogs.filter((m) => m.id !== id);
+
+      if (!isDemo) {
+        saveLocalMoodLogs(userId, updatedLogs);
+        const { error } = await (supabase.from("mood_logs") as any).delete().eq("id", id);
+        if (error) console.error("[SUPABASE_DELETE_MOOD_ERROR]", error);
+      }
+      return id;
+    },
+    onSuccess: (deletedId) => {
+      queryClient.setQueryData<MoodLog[]>(["mood_logs", userId], (old) => (old || []).filter((m) => m.id !== deletedId));
+    },
+  });
+
   return {
     moodLogs: moodQuery.data || (isDemo ? INITIAL_MOOD_LOGS : getLocalMoodLogs(userId)),
     isLoading: moodQuery.isLoading,
     addMoodLog: addMoodLogMutation.mutateAsync,
+    deleteMoodLog: deleteMoodLogMutation.mutateAsync,
   };
 }

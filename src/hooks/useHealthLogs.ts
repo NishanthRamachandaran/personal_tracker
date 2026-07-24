@@ -109,9 +109,27 @@ export function useHealthLogs(userId: string) {
     },
   });
 
+  const deleteHealthLogMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const currentLogs = healthQuery.data || getLocalHealthLogs(userId);
+      const updatedLogs = currentLogs.filter((h) => h.id !== id);
+
+      if (!isDemo) {
+        saveLocalHealthLogs(userId, updatedLogs);
+        const { error } = await (supabase.from("health_logs") as any).delete().eq("id", id);
+        if (error) console.error("[SUPABASE_DELETE_HEALTH_ERROR]", error);
+      }
+      return id;
+    },
+    onSuccess: (deletedId) => {
+      queryClient.setQueryData<HealthLog[]>(["health_logs", userId], (old) => (old || []).filter((h) => h.id !== deletedId));
+    },
+  });
+
   return {
     healthLogs: healthQuery.data || (isDemo ? INITIAL_HEALTH_LOGS : getLocalHealthLogs(userId)),
     isLoading: healthQuery.isLoading,
     upsertHealthLog: upsertHealthLogMutation.mutateAsync,
+    deleteHealthLog: deleteHealthLogMutation.mutateAsync,
   };
 }
