@@ -11,6 +11,7 @@ import { AuthPage } from "@/pages/Auth";
 import { AddEntryModalLauncher } from "@/components/modals/AddEntryModalLauncher";
 import { MilestoneModalLauncher } from "@/components/modals/MilestoneModalLauncher";
 import { CommandPalette } from "@/components/CommandPalette";
+import { PulseAIAssistant } from "@/components/ai/PulseAIAssistant";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,6 +42,7 @@ export const App: React.FC = () => {
           <AddEntryModalLauncher />
           <MilestoneModalLauncher />
           <CommandPalette />
+          <PulseAIAssistant />
         </div>
       </BrowserRouter>
     </QueryClientProvider>
