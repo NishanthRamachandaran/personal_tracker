@@ -21,7 +21,7 @@ export function useHabits(userId: string) {
   const queryClient = useQueryClient();
   const isDemo = !userId || userId === DEMO_USER_ID;
 
-  // 1. Fetch Habits List
+  // 1. Fetch Habits List with auto-seeding for new real users
   const habitsQuery = useQuery({
     queryKey: ["habits", userId],
     queryFn: async (): Promise<Habit[]> => {
@@ -33,9 +33,30 @@ export function useHabits(userId: string) {
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
-      if (error || !data) return [];
+      if (error) return [];
+
+      if (!data || data.length === 0) {
+        // Auto-seed starter habits into Supabase for new user
+        const seedHabits = INITIAL_HABITS.map((h) => ({
+          user_id: userId,
+          name: h.name,
+          icon: h.icon,
+          frequency: h.frequency,
+          reminder_time: h.reminder_time,
+          is_active: true,
+        }));
+
+        const { data: inserted, error: insertErr } = await (supabase.from("habits") as any)
+          .insert(seedHabits)
+          .select();
+
+        if (!insertErr && inserted) return inserted as Habit[];
+        return [];
+      }
+
       return data as Habit[];
     },
+    enabled: !!userId,
   });
 
   // 2. Fetch Habit Logs
@@ -51,9 +72,10 @@ export function useHabits(userId: string) {
       if (error || !data) return [];
       return data as HabitLog[];
     },
+    enabled: !!userId,
   });
 
-  // 3. Toggle Habit Log (Optimistic mutation)
+  // 3. Toggle Habit Log (Optimistic mutation + persistent DB insert/delete)
   const toggleHabitMutation = useMutation({
     mutationFn: async ({ habitId, dateStr = getTodayStr() }: { habitId: string; dateStr?: string }) => {
       const currentLogs = habitLogsQuery.data || (isDemo ? INITIAL_LOGS : []);
@@ -62,13 +84,13 @@ export function useHabits(userId: string) {
       );
 
       if (existing) {
-        // Delete log
+        // Delete log from database
         if (!isDemo) {
           await (supabase.from("habit_logs") as any).delete().eq("id", existing.id);
         }
         return { action: "deleted", habitId, dateStr };
       } else {
-        // Create log
+        // Create log in database
         if (!isDemo) {
           const { data, error } = await (supabase.from("habit_logs") as any)
             .insert({ user_id: userId, habit_id: habitId, completed_on: dateStr })
