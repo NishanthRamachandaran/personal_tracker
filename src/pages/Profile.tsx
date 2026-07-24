@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useHabits } from "@/hooks/useHabits";
@@ -7,8 +7,9 @@ import { useMoodLogs } from "@/hooks/useMoodLogs";
 import { useHealthLogs } from "@/hooks/useHealthLogs";
 import { useStreaks } from "@/hooks/useStreaks";
 import { Card } from "@/components/ui/Card";
-import { User, Download, Moon, Trash2, LogOut, Check, Activity, CreditCard, Smile, HeartPulse } from "lucide-react";
+import { User, Download, Moon, Trash2, LogOut, Check, Activity, CreditCard, Smile, HeartPulse, DollarSign } from "lucide-react";
 import { CategoryType } from "@/types/database";
+import { SUPPORTED_CURRENCIES, getStoredCurrency, setStoredCurrency, CurrencyOption } from "@/utils/currencyFormatter";
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +23,13 @@ export const ProfilePage: React.FC = () => {
   const { streaks } = useStreaks(userId);
 
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyOption>(getStoredCurrency());
+
+  useEffect(() => {
+    const handleCurrencyChange = () => setSelectedCurrency(getStoredCurrency());
+    window.addEventListener("pulse_currency_changed", handleCurrencyChange);
+    return () => window.removeEventListener("pulse_currency_changed", handleCurrencyChange);
+  }, []);
 
   const totalEntriesCount = habitLogs.length + expenses.length + moodLogs.length + healthLogs.length;
   const maxStreak = streaks.reduce((max, s) => Math.max(max, s.longest_streak), 0);
@@ -34,6 +42,11 @@ export const ProfilePage: React.FC = () => {
       : [...activeCategories, cat];
 
     updateCategories(updated);
+  };
+
+  const handleCurrencySelect = (currency: CurrencyOption) => {
+    setStoredCurrency(currency);
+    setSelectedCurrency(currency);
   };
 
   const handleExportCSV = () => {
@@ -155,6 +168,43 @@ export const ProfilePage: React.FC = () => {
                   {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </div>
               </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* Currency Preference Settings */}
+      <Card className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-on-surface flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-expense" /> Display Currency
+            </h2>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              Default is set to Indian Rupee (₹ INR) with automatic country detection
+            </p>
+          </div>
+          <span className="text-xs font-bold text-expense px-3 py-1 rounded-full bg-expense/20">
+            {selectedCurrency.symbol} {selectedCurrency.code}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {SUPPORTED_CURRENCIES.map((curr) => {
+            const isSelected = selectedCurrency.code === curr.code;
+            return (
+              <button
+                key={curr.code}
+                onClick={() => handleCurrencySelect(curr)}
+                className={`p-3 rounded-2xl border text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                  isSelected
+                    ? "bg-expense/20 border-expense text-expense shadow-glow-expense"
+                    : "bg-surface-level2 border-outline/30 text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                <span className="text-base font-extrabold">{curr.symbol}</span>
+                <span className="text-[10px]">{curr.code}</span>
+              </button>
             );
           })}
         </div>

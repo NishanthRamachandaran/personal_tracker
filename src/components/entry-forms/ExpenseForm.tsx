@@ -5,6 +5,7 @@ import { expenseValidationSchema } from "@/lib/validationSchemas";
 import { z } from "zod";
 import { Button } from "@/components/ui/Button";
 import { ExpenseCategory } from "@/types/database";
+import { getStoredCurrency } from "@/utils/currencyFormatter";
 
 type ExpenseFormData = z.infer<typeof expenseValidationSchema>;
 
@@ -16,6 +17,7 @@ interface ExpenseFormProps {
 
 export const ExpenseForm: React.FC<ExpenseFormProps> = ({ categories, onSubmit, onCancel }) => {
   const todayStr = new Date().toISOString().split("T")[0];
+  const currency = getStoredCurrency();
 
   const {
     register,
@@ -39,7 +41,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ categories, onSubmit, 
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
         <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-          Amount ($ USD)
+          Amount ({currency.symbol} {currency.code})
         </label>
         <input
           type="number"

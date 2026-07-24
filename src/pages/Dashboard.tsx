@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { Activity, CreditCard, Smile, HeartPulse, Check, Plus, Calendar as CalendarIcon, Zap, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 export const DashboardPage: React.FC = () => {
   const { user, profile } = useAuth();
@@ -57,7 +58,7 @@ export const DashboardPage: React.FC = () => {
   expenses
     .filter((e) => e.spent_on === todayStr)
     .forEach((e) => {
-      timeline.push({ id: e.id, type: "expense", title: `${e.expense_categories?.name || "Expense"}: $${Number(e.amount).toFixed(2)}`, subtitle: e.note || "Logged expense", color: "#22D3EE" });
+      timeline.push({ id: e.id, type: "expense", title: `${e.expense_categories?.name || "Expense"}: ${formatCurrency(Number(e.amount))}`, subtitle: e.note || "Logged expense", color: "#22D3EE" });
     });
 
   moodLogs
@@ -85,12 +86,16 @@ export const DashboardPage: React.FC = () => {
           <h1 className="text-2xl md:text-3xl font-extrabold text-on-surface tracking-tight">
             Welcome back, {profile?.full_name?.split(" ")[0] || "User"} 👋
           </h1>
+          <p className="text-xs text-on-surface-variant">
+            Here is your daily snapshot for habits, expenses, mood, and health.
+          </p>
         </div>
 
-        <div className="px-4 py-2 rounded-2xl glass-card border border-habit/40 flex items-center gap-2.5 shadow-glow-habit">
-          <span className="text-xl">🔥</span>
+        {/* Streak Counter Badge */}
+        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-surface-level2 border border-habit/30 shadow-glow-habit">
+          <Zap className="w-5 h-5 text-habit-primary stroke-[2.5]" />
           <div>
-            <p className="text-[10px] text-on-surface-variant uppercase font-bold">Active Streak</p>
+            <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Active Streak</p>
             <p className="text-sm font-extrabold text-habit-primary">{activeStreakCount} Days</p>
           </div>
         </div>
@@ -134,7 +139,7 @@ export const DashboardPage: React.FC = () => {
               <span className="text-xs font-bold text-expense">+ Log</span>
             </div>
             <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Expenses Today</p>
-            <h3 className="text-2xl font-extrabold text-on-surface mt-1">${expensesToday.toFixed(2)}</h3>
+            <h3 className="text-2xl font-extrabold text-on-surface mt-1">{formatCurrency(expensesToday)}</h3>
             <p className="text-[11px] text-on-surface-variant mt-2 font-medium">Daily budget tracking</p>
           </Card>
         )}
