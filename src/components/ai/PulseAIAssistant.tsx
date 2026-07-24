@@ -8,6 +8,7 @@ import { useStreaks } from "@/hooks/useStreaks";
 import { Bot, Sparkles, Send, X, ChevronRight, RefreshCw, CheckCircle2, Zap, ShieldCheck } from "lucide-react";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { playCheckmarkSound, playSuccessFanfare } from "@/utils/audioFeedback";
+import { supabase } from "@/lib/supabaseClient";
 
 interface Message {
   id: string;
@@ -155,6 +156,27 @@ export const PulseAIAssistant: React.FC = () => {
       return {
         text: `✅ **Action Executed**: Logged **${(glasses * 0.25).toFixed(1)}L Water**, **${sleep}h Sleep**, and **${workout}m Workout** into health metrics!`,
         actionExecuted: { type: "log_health", detail: `${glasses} glasses, ${sleep}h sleep` },
+      };
+    }
+
+    // Erase History Command
+    if (lower.includes("erase history") || lower.includes("clear history") || lower.includes("delete history")) {
+      localStorage.removeItem(`pulse_habit_logs_${userId}`);
+      localStorage.removeItem(`pulse_expenses_${userId}`);
+      localStorage.removeItem(`pulse_mood_${userId}`);
+      localStorage.removeItem(`pulse_health_${userId}`);
+
+      if (userId) {
+        await (supabase.from("habit_logs") as any).delete().eq("user_id", userId);
+        await (supabase.from("expenses") as any).delete().eq("user_id", userId);
+        await (supabase.from("mood_logs") as any).delete().eq("user_id", userId);
+        await (supabase.from("health_logs") as any).delete().eq("user_id", userId);
+      }
+
+      setTimeout(() => window.location.reload(), 1500);
+
+      return {
+        text: `✅ **Action Executed**: Erased all logged tracking history! Page will refresh now.`,
       };
     }
 

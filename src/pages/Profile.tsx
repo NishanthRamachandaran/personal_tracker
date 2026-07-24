@@ -7,10 +7,11 @@ import { useMoodLogs } from "@/hooks/useMoodLogs";
 import { useHealthLogs } from "@/hooks/useHealthLogs";
 import { useStreaks } from "@/hooks/useStreaks";
 import { Card } from "@/components/ui/Card";
-import { User, Download, Moon, Trash2, LogOut, Check, Activity, CreditCard, Smile, HeartPulse, DollarSign, Volume2, VolumeX } from "lucide-react";
+import { User, Download, Moon, Trash2, LogOut, Check, Activity, CreditCard, Smile, HeartPulse, DollarSign, Volume2, VolumeX, RotateCcw } from "lucide-react";
 import { CategoryType } from "@/types/database";
 import { SUPPORTED_CURRENCIES, getStoredCurrency, setStoredCurrency, CurrencyOption } from "@/utils/currencyFormatter";
 import { isSoundEnabled, setSoundEnabled } from "@/utils/audioFeedback";
+import { supabase } from "@/lib/supabaseClient";
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -61,6 +62,32 @@ export const ProfilePage: React.FC = () => {
   const handleSoundToggle = (enabled: boolean) => {
     setSoundEnabled(enabled);
     setSoundOn(enabled);
+  };
+
+  const handleEraseAllHistory = async () => {
+    if (confirm("Are you sure you want to erase all your logged history (habits logs, expenses, mood, and health metrics)? Your habit definitions will remain intact.")) {
+      try {
+        localStorage.removeItem(`pulse_habit_logs_${userId}`);
+        localStorage.removeItem(`pulse_expenses_${userId}`);
+        localStorage.removeItem(`pulse_mood_${userId}`);
+        localStorage.removeItem(`pulse_health_${userId}`);
+
+        if (userId) {
+          await (supabase.from("habit_logs") as any).delete().eq("user_id", userId);
+          await (supabase.from("expenses") as any).delete().eq("user_id", userId);
+          await (supabase.from("mood_logs") as any).delete().eq("user_id", userId);
+          await (supabase.from("health_logs") as any).delete().eq("user_id", userId);
+        }
+
+        setDownloadNotice("Erased all tracking history logs!");
+        setTimeout(() => {
+          setDownloadNotice(null);
+          window.location.reload();
+        }, 1500);
+      } catch (e) {
+        console.error("Failed to erase history", e);
+      }
+    }
   };
 
   const handleExportCSV = () => {
@@ -267,7 +294,7 @@ export const ProfilePage: React.FC = () => {
 
       {/* System Settings & Data Export */}
       <Card className="space-y-4">
-        <h2 className="text-lg font-bold text-on-surface">Data Control & Settings</h2>
+        <h2 className="text-lg font-bold text-on-surface">Data Control & History</h2>
 
         <div className="space-y-3">
           <div className="p-4 rounded-2xl bg-surface-level2 border border-outline/30 flex items-center justify-between">
@@ -288,6 +315,13 @@ export const ProfilePage: React.FC = () => {
             className="w-full p-4 rounded-2xl bg-surface-level2 hover:bg-surface-level3 border border-outline/30 text-on-surface font-bold text-xs flex items-center justify-center gap-2 transition-all"
           >
             <Download className="w-4 h-4 text-expense" /> Export CSV Data
+          </button>
+
+          <button
+            onClick={handleEraseAllHistory}
+            className="w-full p-4 rounded-2xl bg-mood/10 hover:bg-mood/20 border border-mood/30 text-mood font-bold text-xs flex items-center justify-center gap-2 transition-all"
+          >
+            <RotateCcw className="w-4 h-4" /> Erase All Logged History
           </button>
         </div>
 
