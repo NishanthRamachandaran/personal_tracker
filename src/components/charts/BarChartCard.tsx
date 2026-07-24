@@ -17,7 +17,7 @@ export const BarChartCard: React.FC<BarChartCardProps> = ({ title, subtitle, dat
           <p className="text-xs text-on-surface-variant">{subtitle}</p>
         </div>
         <span className="text-xs font-extrabold text-habit-primary px-2.5 py-1 rounded-full bg-habit/20">
-          Habits
+          Analytics
         </span>
       </div>
 
@@ -26,9 +26,11 @@ export const BarChartCard: React.FC<BarChartCardProps> = ({ title, subtitle, dat
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2A2A36" vertical={false} />
             <XAxis dataKey="day" stroke="#a099a8" fontSize={11} />
-            <YAxis stroke="#a099a8" fontSize={11} unit="%" domain={[0, 100]} />
+            <YAxis stroke="#a099a8" fontSize={11} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#16161D", borderColor: "#A855F7", borderRadius: "12px", color: "#eadfed" }}
+              contentStyle={{ backgroundColor: "#16161D", borderColor: "#A855F7", borderRadius: "12px", color: "#F3F4F6" }}
+              itemStyle={{ color: "#A855F7", fontWeight: "bold", fontSize: "12px" }}
+              labelStyle={{ color: "#F3F4F6", fontWeight: "bold", fontSize: "12px" }}
             />
             <Bar dataKey="completionRate" fill="#A855F7" radius={[6, 6, 0, 0]} />
           </BarChart>

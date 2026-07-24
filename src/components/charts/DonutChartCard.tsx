@@ -1,6 +1,7 @@
 import React from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { Card } from "@/components/ui/Card";
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 interface DonutChartCardProps {
   title: string;
@@ -43,13 +44,37 @@ export const DonutChartCard: React.FC<DonutChartCardProps> = ({ title, subtitle,
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ backgroundColor: "#16161D", borderColor: "#22D3EE", borderRadius: "12px", color: "#eadfed" }}
-                formatter={(val: any) => [`$${parseFloat(val).toFixed(2)}`, "Total"]}
+                contentStyle={{
+                  backgroundColor: "#16161D",
+                  borderColor: "#22D3EE",
+                  borderRadius: "14px",
+                  color: "#F3F4F6",
+                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
+                }}
+                itemStyle={{ color: "#22D3EE", fontWeight: "bold", fontSize: "12px" }}
+                labelStyle={{ color: "#F3F4F6", fontWeight: "bold", fontSize: "12px" }}
+                formatter={(val: any) => [formatCurrency(parseFloat(val)), "Total Spend"]}
               />
             </PieChart>
           </ResponsiveContainer>
         )}
       </div>
+
+      {/* Category Color Legend */}
+      {data.length > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2 text-xs font-semibold">
+          {data.map((entry, index) => (
+            <div key={entry.name} className="flex items-center gap-1.5">
+              <span
+                className="w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+              />
+              <span className="text-on-surface">{entry.name}</span>
+              <span className="text-on-surface-variant text-[10px]">({formatCurrency(entry.value)})</span>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 };

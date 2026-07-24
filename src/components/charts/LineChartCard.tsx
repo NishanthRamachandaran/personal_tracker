@@ -34,7 +34,9 @@ export const LineChartCard: React.FC<LineChartCardProps> = ({ title, subtitle, d
             <XAxis dataKey="day" stroke="#a099a8" fontSize={11} />
             <YAxis stroke="#a099a8" fontSize={11} domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#16161D", borderColor: "#EC4899", borderRadius: "12px", color: "#eadfed" }}
+              contentStyle={{ backgroundColor: "#16161D", borderColor: "#EC4899", borderRadius: "12px", color: "#F3F4F6" }}
+              itemStyle={{ color: "#EC4899", fontWeight: "bold", fontSize: "12px" }}
+              labelStyle={{ color: "#F3F4F6", fontWeight: "bold", fontSize: "12px" }}
             />
             <Area type="monotone" dataKey="rating" stroke="#EC4899" strokeWidth={3} fillOpacity={1} fill="url(#moodGradient)" />
           </AreaChart>

@@ -28,7 +28,9 @@ export const ComboChartCard: React.FC<ComboChartCardProps> = ({ title, subtitle,
             <XAxis dataKey="day" stroke="#a099a8" fontSize={11} />
             <YAxis stroke="#a099a8" fontSize={11} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#16161D", borderColor: "#84CC16", borderRadius: "12px", color: "#eadfed" }}
+              contentStyle={{ backgroundColor: "#16161D", borderColor: "#84CC16", borderRadius: "12px", color: "#F3F4F6" }}
+              itemStyle={{ color: "#84CC16", fontWeight: "bold", fontSize: "12px" }}
+              labelStyle={{ color: "#F3F4F6", fontWeight: "bold", fontSize: "12px" }}
             />
             <Line type="monotone" dataKey="waterLiters" stroke="#22D3EE" strokeWidth={2.5} name="Water (L)" />
             <Line type="monotone" dataKey="sleepHours" stroke="#84CC16" strokeWidth={2.5} name="Sleep (h)" />
