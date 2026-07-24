@@ -12,7 +12,8 @@ const INITIAL_HABITS: Habit[] = [
   { id: "44444444-4444-4444-8444-444444444444", user_id: DEMO_USER_ID, name: "Read 20 Pages", icon: "book-open", frequency: "daily", reminder_time: "21:30:00", is_active: true, created_at: new Date().toISOString() },
 ];
 
-const INITIAL_LOGS: HabitLog[] = [
+// Pre-checked logs only for Demo Mode
+const DEMO_LOGS: HabitLog[] = [
   { id: "aaaa1111-aaaa-4aaa-8aaa-aaaaaaaaaaaa", habit_id: "11111111-1111-4111-8111-111111111111", user_id: DEMO_USER_ID, completed_on: getTodayStr(), created_at: new Date().toISOString() },
   { id: "bbbb2222-bbbb-4bbb-8bbb-bbbbbbbbbbbb", habit_id: "22222222-2222-4222-8222-222222222222", user_id: DEMO_USER_ID, completed_on: getTodayStr(), created_at: new Date().toISOString() },
 ];
@@ -71,13 +72,13 @@ export function useHabits(userId: string) {
 
       if (error) {
         console.error("[SUPABASE_HABITS_FETCH_ERROR]", error);
-        return localHabits.length > 0 ? localHabits : INITIAL_HABITS;
+        return localHabits;
       }
 
       if (!data || data.length === 0) {
         if (localHabits.length > 0) return localHabits;
 
-        // Auto-seed starter habits into Supabase for new user
+        // Auto-seed starter habits for new real user
         const seedHabits = INITIAL_HABITS.map((h) => ({
           user_id: userId,
           name: h.name,
@@ -95,9 +96,7 @@ export function useHabits(userId: string) {
           saveLocalHabits(userId, inserted as Habit[]);
           return inserted as Habit[];
         }
-        
-        saveLocalHabits(userId, INITIAL_HABITS);
-        return INITIAL_HABITS;
+        return [];
       }
 
       saveLocalHabits(userId, data as Habit[]);
@@ -106,11 +105,11 @@ export function useHabits(userId: string) {
     enabled: !!userId,
   });
 
-  // 2. Fetch Habit Logs
+  // 2. Fetch Habit Logs (starts strictly EMPTY for real accounts)
   const habitLogsQuery = useQuery({
     queryKey: ["habit_logs", userId],
     queryFn: async (): Promise<HabitLog[]> => {
-      if (isDemo) return INITIAL_LOGS;
+      if (isDemo) return DEMO_LOGS;
 
       const localLogs = getLocalLogs(userId);
 
@@ -123,17 +122,17 @@ export function useHabits(userId: string) {
         return localLogs;
       }
 
-      const merged = (data && data.length > 0) ? (data as HabitLog[]) : localLogs;
-      saveLocalLogs(userId, merged);
-      return merged;
+      const logs = (data as HabitLog[]) || [];
+      saveLocalLogs(userId, logs);
+      return logs;
     },
     enabled: !!userId,
   });
 
-  // 3. Toggle Habit Log (Optimistic UI + DB + localStorage backup)
+  // 3. Toggle Habit Log
   const toggleHabitMutation = useMutation({
     mutationFn: async ({ habitId, dateStr = getTodayStr() }: { habitId: string; dateStr?: string }) => {
-      const currentLogs = habitLogsQuery.data || (isDemo ? INITIAL_LOGS : getLocalLogs(userId));
+      const currentLogs = habitLogsQuery.data || (isDemo ? DEMO_LOGS : getLocalLogs(userId));
       const existing = currentLogs.find(
         (l) => l.habit_id === habitId && l.completed_on === dateStr
       );
@@ -262,7 +261,7 @@ export function useHabits(userId: string) {
 
   return {
     habits: habitsQuery.data || (isDemo ? INITIAL_HABITS : getLocalHabits(userId)),
-    habitLogs: habitLogsQuery.data || (isDemo ? INITIAL_LOGS : getLocalLogs(userId)),
+    habitLogs: habitLogsQuery.data || (isDemo ? DEMO_LOGS : getLocalLogs(userId)),
     isLoading: habitsQuery.isLoading || habitLogsQuery.isLoading,
     toggleHabit: toggleHabitMutation.mutateAsync,
     createHabit: createHabitMutation.mutateAsync,
