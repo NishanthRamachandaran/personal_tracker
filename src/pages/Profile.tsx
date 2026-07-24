@@ -7,9 +7,10 @@ import { useMoodLogs } from "@/hooks/useMoodLogs";
 import { useHealthLogs } from "@/hooks/useHealthLogs";
 import { useStreaks } from "@/hooks/useStreaks";
 import { Card } from "@/components/ui/Card";
-import { User, Download, Moon, Trash2, LogOut, Check, Activity, CreditCard, Smile, HeartPulse, DollarSign } from "lucide-react";
+import { User, Download, Moon, Trash2, LogOut, Check, Activity, CreditCard, Smile, HeartPulse, DollarSign, Volume2, VolumeX } from "lucide-react";
 import { CategoryType } from "@/types/database";
 import { SUPPORTED_CURRENCIES, getStoredCurrency, setStoredCurrency, CurrencyOption } from "@/utils/currencyFormatter";
+import { isSoundEnabled, setSoundEnabled } from "@/utils/audioFeedback";
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,11 +25,19 @@ export const ProfilePage: React.FC = () => {
 
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyOption>(getStoredCurrency());
+  const [soundOn, setSoundOn] = useState<boolean>(isSoundEnabled());
 
   useEffect(() => {
     const handleCurrencyChange = () => setSelectedCurrency(getStoredCurrency());
+    const handleSoundChange = () => setSoundOn(isSoundEnabled());
+
     window.addEventListener("pulse_currency_changed", handleCurrencyChange);
-    return () => window.removeEventListener("pulse_currency_changed", handleCurrencyChange);
+    window.addEventListener("pulse_sound_changed", handleSoundChange);
+
+    return () => {
+      window.removeEventListener("pulse_currency_changed", handleCurrencyChange);
+      window.removeEventListener("pulse_sound_changed", handleSoundChange);
+    };
   }, []);
 
   const totalEntriesCount = habitLogs.length + expenses.length + moodLogs.length + healthLogs.length;
@@ -47,6 +56,11 @@ export const ProfilePage: React.FC = () => {
   const handleCurrencySelect = (currency: CurrencyOption) => {
     setStoredCurrency(currency);
     setSelectedCurrency(currency);
+  };
+
+  const handleSoundToggle = (enabled: boolean) => {
+    setSoundEnabled(enabled);
+    setSoundOn(enabled);
   };
 
   const handleExportCSV = () => {
@@ -170,6 +184,47 @@ export const ProfilePage: React.FC = () => {
               </div>
             );
           })}
+        </div>
+      </Card>
+
+      {/* Sound Effects Audio Preferences */}
+      <Card className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-on-surface flex items-center gap-2">
+              {soundOn ? <Volume2 className="w-5 h-5 text-habit-primary" /> : <VolumeX className="w-5 h-5 text-on-surface-variant" />} Sound Effects
+            </h2>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              Tactile audio feedback on habit checkmarks & 100% completion fanfare
+            </p>
+          </div>
+          <span className={`text-xs font-bold px-3 py-1 rounded-full ${soundOn ? "bg-habit/20 text-habit-primary" : "bg-surface-level2 text-on-surface-variant"}`}>
+            {soundOn ? "Enabled 🔊" : "Muted 🔇"}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => handleSoundToggle(true)}
+            className={`p-3.5 rounded-2xl border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              soundOn
+                ? "bg-habit/20 border-habit text-habit-primary shadow-glow-habit"
+                : "bg-surface-level2 border-outline/30 text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            <Volume2 className="w-4 h-4" /> Sound ON
+          </button>
+
+          <button
+            onClick={() => handleSoundToggle(false)}
+            className={`p-3.5 rounded-2xl border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              !soundOn
+                ? "bg-surface-level3 border-outline text-on-surface"
+                : "bg-surface-level2 border-outline/30 text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            <VolumeX className="w-4 h-4" /> Mute Sound
+          </button>
         </div>
       </Card>
 

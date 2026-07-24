@@ -1,5 +1,24 @@
-// Web Audio API Synthesizer - 0kb external asset requirement
+export function isSoundEnabled(): boolean {
+  try {
+    const saved = localStorage.getItem("pulse_sound_enabled");
+    if (saved !== null) return JSON.parse(saved);
+  } catch {}
+  return true; // Default ON
+}
+
+export function setSoundEnabled(enabled: boolean) {
+  try {
+    localStorage.setItem("pulse_sound_enabled", JSON.stringify(enabled));
+    window.dispatchEvent(new Event("pulse_sound_changed"));
+  } catch (e) {
+    console.error("Failed to set sound setting", e);
+  }
+}
+
+// Web Audio API Synthesizer
 export function playCheckmarkSound() {
+  if (!isSoundEnabled()) return;
+
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
@@ -21,11 +40,13 @@ export function playCheckmarkSound() {
     osc.start();
     osc.stop(ctx.currentTime + 0.08);
   } catch (e) {
-    // Silent fallback if audio context blocked by browser policy
+    // Silent fallback if blocked by browser autoplay policy
   }
 }
 
 export function playSuccessFanfare() {
+  if (!isSoundEnabled()) return;
+
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
