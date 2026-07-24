@@ -2,47 +2,21 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-:root {
-  --bg-color: #0D0D12;
-  --text-primary: #F3F4F6;
-  --text-variant: #9CA3AF;
-  --surface-level1: rgba(22, 22, 29, 0.85);
-  --surface-level2: #1E1E26;
-  --surface-level3: #2A2A36;
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.18);
-  --modal-bg: rgba(13, 13, 18, 0.94);
-}
-
-html.light {
-  --bg-color: #F8FAFC;
-  --text-primary: #0F172A;
-  --text-variant: #64748B;
-  --surface-level1: rgba(255, 255, 255, 0.95);
-  --surface-level2: #F1F5F9;
-  --surface-level3: #E2E8F0;
-  --border-color: rgba(0, 0, 0, 0.08);
-  --border-hover: rgba(0, 0, 0, 0.18);
-  --modal-bg: rgba(255, 255, 255, 0.96);
-}
-
 @layer base {
   body {
-    background-color: var(--bg-color);
-    color: var(--text-primary);
+    background-color: #0D0D12;
+    color: #eadfed;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
-    transition: background-color 0.25s ease, color 0.25s ease;
   }
 }
 
 .glass-card {
-  background: var(--surface-level1);
+  background: rgba(22, 22, 29, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-color);
-  transition: background-color 0.25s ease, border-color 0.25s ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-card-hover {
@@ -50,15 +24,15 @@ html.light {
 }
 
 .glass-card-hover:hover {
-  border-color: var(--border-hover);
+  border-color: rgba(255, 255, 255, 0.18);
   transform: translateY(-2px);
 }
 
 .glass-modal {
-  background: var(--modal-bg);
+  background: rgba(13, 13, 18, 0.92);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* Custom scrollbars */
@@ -68,16 +42,15 @@ html.light {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--surface-level2);
+  background: rgba(13, 13, 18, 0.5);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--text-variant);
-  opacity: 0.4;
+  background: rgba(160, 153, 168, 0.3);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  opacity: 0.8;
+  background: rgba(160, 153, 168, 0.6);
 }
