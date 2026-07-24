@@ -3,26 +3,26 @@ import { supabase } from "@/lib/supabaseClient";
 import { Expense, ExpenseCategory } from "@/types/database";
 
 const getTodayStr = () => new Date().toISOString().split("T")[0];
-const DEMO_USER_ID = "demo-user-id-001";
+const DEMO_USER_ID = "00000000-0000-4000-8000-000000000001";
 
 const DEFAULT_CATEGORIES: ExpenseCategory[] = [
-  { id: "cat-1", name: "Food", color: "#EC4899", icon: "utensils" },
-  { id: "cat-2", name: "Transport", color: "#3B82F6", icon: "car" },
-  { id: "cat-3", name: "Shopping", color: "#A855F7", icon: "shopping-bag" },
-  { id: "cat-4", name: "Bills", color: "#EF4444", icon: "file-text" },
-  { id: "cat-5", name: "Entertainment", color: "#84CC16", icon: "tv" },
-  { id: "cat-6", name: "Other", color: "#6B7280", icon: "more-horizontal" },
+  { id: "10000000-0000-4000-8000-000000000001", name: "Food", color: "#EC4899", icon: "utensils" },
+  { id: "10000000-0000-4000-8000-000000000002", name: "Transport", color: "#3B82F6", icon: "car" },
+  { id: "10000000-0000-4000-8000-000000000003", name: "Shopping", color: "#A855F7", icon: "shopping-bag" },
+  { id: "10000000-0000-4000-8000-000000000004", name: "Bills", color: "#EF4444", icon: "file-text" },
+  { id: "10000000-0000-4000-8000-000000000005", name: "Entertainment", color: "#84CC16", icon: "tv" },
+  { id: "10000000-0000-4000-8000-000000000006", name: "Other", color: "#6B7280", icon: "more-horizontal" },
 ];
 
 const INITIAL_EXPENSES: Expense[] = [
-  { id: "e-1", user_id: DEMO_USER_ID, category_id: "cat-1", amount: 42.50, note: "Whole Foods Organic Groceries", spent_on: getTodayStr(), created_at: new Date().toISOString(), expense_categories: DEFAULT_CATEGORIES[0] },
-  { id: "e-2", user_id: DEMO_USER_ID, category_id: "cat-2", amount: 15.00, note: "Uber Ride Downtown", spent_on: getTodayStr(), created_at: new Date().toISOString(), expense_categories: DEFAULT_CATEGORIES[1] },
-  { id: "e-3", user_id: DEMO_USER_ID, category_id: "cat-3", amount: 94.99, note: "Running Shoes Sale", spent_on: getTodayStr(), created_at: new Date().toISOString(), expense_categories: DEFAULT_CATEGORIES[2] },
+  { id: "e1111111-1111-4111-8111-111111111111", user_id: DEMO_USER_ID, category_id: "10000000-0000-4000-8000-000000000001", amount: 42.50, note: "Whole Foods Organic Groceries", spent_on: getTodayStr(), created_at: new Date().toISOString(), expense_categories: DEFAULT_CATEGORIES[0] },
+  { id: "e2222222-2222-4222-8222-222222222222", user_id: DEMO_USER_ID, category_id: "10000000-0000-4000-8000-000000000002", amount: 15.00, note: "Uber Ride Downtown", spent_on: getTodayStr(), created_at: new Date().toISOString(), expense_categories: DEFAULT_CATEGORIES[1] },
+  { id: "e3333333-3333-4333-8333-333333333333", user_id: DEMO_USER_ID, category_id: "10000000-0000-4000-8000-000000000003", amount: 94.99, note: "Running Shoes Sale", spent_on: getTodayStr(), created_at: new Date().toISOString(), expense_categories: DEFAULT_CATEGORIES[2] },
 ];
 
 export function useExpenses(userId: string) {
   const queryClient = useQueryClient();
-  const isDemo = !userId || userId === DEMO_USER_ID;
+  const isDemo = !userId || userId === DEMO_USER_ID || userId === "demo-user-id-001";
 
   // 1. Fetch Expense Categories
   const categoriesQuery = useQuery({
@@ -45,9 +45,13 @@ export function useExpenses(userId: string) {
         .eq("user_id", userId)
         .order("spent_on", { ascending: false });
 
-      if (error || !data) return [];
-      return data as Expense[];
+      if (error) {
+        console.error("[SUPABASE_EXPENSES_FETCH_ERROR]", error);
+        return [];
+      }
+      return (data || []) as Expense[];
     },
+    enabled: !!userId,
   });
 
   // 3. Add Expense
@@ -65,13 +69,17 @@ export function useExpenses(userId: string) {
           .select("*, expense_categories(*)")
           .single();
 
-        await (supabase as any).rpc("update_streak", { p_user_id: userId, p_category: "expenses" });
-        if (!error && data) return data as Expense;
+        if (error) {
+          console.error("[SUPABASE_ADD_EXPENSE_ERROR]", error);
+        } else {
+          await (supabase as any).rpc("update_streak", { p_user_id: userId, p_category: "expenses" });
+          if (data) return data as Expense;
+        }
       }
 
       const catObj = (categoriesQuery.data || DEFAULT_CATEGORIES).find((c) => c.id === categoryId);
       const fallback: Expense = {
-        id: "e-" + Date.now(),
+        id: crypto.randomUUID(),
         user_id: userId,
         category_id: categoryId,
         amount,
@@ -92,7 +100,8 @@ export function useExpenses(userId: string) {
   const deleteExpenseMutation = useMutation({
     mutationFn: async (expenseId: string) => {
       if (!isDemo) {
-        await (supabase.from("expenses") as any).delete().eq("id", expenseId);
+        const { error } = await (supabase.from("expenses") as any).delete().eq("id", expenseId);
+        if (error) console.error("[SUPABASE_DELETE_EXPENSE_ERROR]", error);
       }
       return expenseId;
     },
