@@ -9,6 +9,7 @@ import { useStreaks } from "@/hooks/useStreaks";
 import { useUIStore } from "@/store/useUIStore";
 import { Card } from "@/components/ui/Card";
 import { ProgressRing } from "@/components/ui/ProgressRing";
+import { SwipeableItem } from "@/components/SwipeableItem";
 import { Activity, CreditCard, Smile, HeartPulse, Check, Plus, Calendar as CalendarIcon, Zap, Command, Sparkles } from "lucide-react";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { playCheckmarkSound, playSuccessFanfare } from "@/utils/audioFeedback";
@@ -19,9 +20,9 @@ export const DashboardPage: React.FC = () => {
   const { openAddModal } = useUIStore();
 
   const { habits, habitLogs, toggleHabit } = useHabits(userId);
-  const { expenses } = useExpenses(userId);
-  const { moodLogs } = useMoodLogs(userId);
-  const { healthLogs } = useHealthLogs(userId);
+  const { expenses, deleteExpense } = useExpenses(userId);
+  const { moodLogs, deleteMoodLog } = useMoodLogs(userId);
+  const { healthLogs, deleteHealthLog } = useHealthLogs(userId);
   const { activeStreakCount } = useStreaks(userId);
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -59,34 +60,46 @@ export const DashboardPage: React.FC = () => {
     return res;
   };
 
+  const handleEraseTimelineItem = async (item: { id: string; type: string; rawId: string }) => {
+    if (item.type === "habit") {
+      await toggleHabit({ habitId: item.rawId, dateStr: todayStr });
+    } else if (item.type === "expense") {
+      await deleteExpense(item.id);
+    } else if (item.type === "mood") {
+      await deleteMoodLog(item.id);
+    } else if (item.type === "health") {
+      await deleteHealthLog(item.id);
+    }
+  };
+
   // Today Snapshot timeline items
-  const timeline: Array<{ id: string; type: string; title: string; subtitle: string; color: string }> = [];
+  const timeline: Array<{ id: string; rawId: string; type: string; title: string; subtitle: string; color: string }> = [];
 
   habitLogs
     .filter((l) => l.completed_on === todayStr)
     .forEach((l) => {
       const h = habits.find((item) => item.id === l.habit_id);
       if (h) {
-        timeline.push({ id: l.id, type: "habit", title: h.name, subtitle: "Habit check-in completed", color: "#A855F7" });
+        timeline.push({ id: l.id, rawId: h.id, type: "habit", title: h.name, subtitle: "Habit check-in completed", color: "#A855F7" });
       }
     });
 
   expenses
     .filter((e) => e.spent_on === todayStr)
     .forEach((e) => {
-      timeline.push({ id: e.id, type: "expense", title: `${e.expense_categories?.name || "Expense"}: ${formatCurrency(Number(e.amount))}`, subtitle: e.note || "Logged expense", color: "#22D3EE" });
+      timeline.push({ id: e.id, rawId: e.id, type: "expense", title: `${e.expense_categories?.name || "Expense"}: ${formatCurrency(Number(e.amount))}`, subtitle: e.note || "Logged expense", color: "#22D3EE" });
     });
 
   moodLogs
     .filter((m) => m.logged_on === todayStr)
     .forEach((m) => {
-      timeline.push({ id: m.id, type: "mood", title: `Mood Score: ${m.mood_score}/5`, subtitle: m.journal_note || (m.tags ? m.tags.join(", ") : "Logged mood"), color: "#EC4899" });
+      timeline.push({ id: m.id, rawId: m.id, type: "mood", title: `Mood Score: ${m.mood_score}/5`, subtitle: m.journal_note || (m.tags ? m.tags.join(", ") : "Logged mood"), color: "#EC4899" });
     });
 
   healthLogs
     .filter((h) => h.logged_on === todayStr)
     .forEach((h) => {
-      timeline.push({ id: h.id, type: "health", title: "Health Tracker", subtitle: `💧 ${(h.water_glasses * 0.25).toFixed(1)}L | 💤 ${h.sleep_hours}h | 🏃 ${h.workout_minutes}m`, color: "#84CC16" });
+      timeline.push({ id: h.id, rawId: h.id, type: "health", title: "Health Tracker", subtitle: `💧 ${(h.water_glasses * 0.25).toFixed(1)}L | 💤 ${h.sleep_hours}h | 🏃 ${h.workout_minutes}m`, color: "#84CC16" });
     });
 
   const activeCategories = profile?.active_categories || ["habits", "expenses", "mood", "health"];
@@ -266,28 +279,33 @@ export const DashboardPage: React.FC = () => {
             const isDone = habitLogs.some((l) => l.habit_id === habit.id && l.completed_on === todayStr);
 
             return (
-              <div
+              <SwipeableItem
                 key={habit.id}
-                onClick={() => handleToggleHabit(habit.id)}
-                className={`p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer active:scale-98 ${
-                  isDone
-                    ? "bg-habit/10 border-habit/50 shadow-glow-habit"
-                    : "bg-surface-level2 border-outline/30 hover:border-habit/30"
-                }`}
+                title={`habit "${habit.name}" check-in`}
+                onErase={async () => { await handleToggleHabit(habit.id); }}
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${isDone ? "bg-habit text-background shadow-glow-habit" : "bg-surface-bright text-on-surface-variant"}`}>
-                    <Check className="w-5 h-5 stroke-[3]" />
+                <div
+                  onClick={() => handleToggleHabit(habit.id)}
+                  className={`p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer active:scale-98 ${
+                    isDone
+                      ? "bg-habit/10 border-habit/50 shadow-glow-habit"
+                      : "bg-surface-level2 border-outline/30 hover:border-habit/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${isDone ? "bg-habit text-background shadow-glow-habit" : "bg-surface-bright text-on-surface-variant"}`}>
+                      <Check className="w-5 h-5 stroke-[3]" />
+                    </div>
+                    <div>
+                      <p className={`text-sm font-bold ${isDone ? "line-through text-on-surface-variant" : "text-on-surface"}`}>{habit.name}</p>
+                      <p className="text-xs text-on-surface-variant">{habit.reminder_time || "All day"}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className={`text-sm font-bold ${isDone ? "line-through text-on-surface-variant" : "text-on-surface"}`}>{habit.name}</p>
-                    <p className="text-xs text-on-surface-variant">{habit.reminder_time || "All day"}</p>
-                  </div>
+                  <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${isDone ? "bg-habit/20 text-habit-primary" : "bg-surface-bright text-on-surface-variant"}`}>
+                    {isDone ? "Completed" : "Check-in"}
+                  </span>
                 </div>
-                <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${isDone ? "bg-habit/20 text-habit-primary" : "bg-surface-bright text-on-surface-variant"}`}>
-                  {isDone ? "Completed" : "Check-in"}
-                </span>
-              </div>
+              </SwipeableItem>
             );
           })}
         </div>
@@ -295,7 +313,11 @@ export const DashboardPage: React.FC = () => {
 
       {/* Today's Activity Snapshot */}
       <Card className="space-y-4">
-        <h2 className="text-lg font-bold text-on-surface">Today's Timeline Activity</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-on-surface">Today's Timeline Activity</h2>
+          <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Swipe or hover to erase</span>
+        </div>
+
         {timeline.length === 0 ? (
           <div className="py-8 text-center text-on-surface-variant text-xs font-semibold">
             No activity recorded today yet. Log a habit, expense, or mood above!
@@ -303,22 +325,25 @@ export const DashboardPage: React.FC = () => {
         ) : (
           <div className="space-y-2.5">
             {timeline.map((item) => (
-              <div
+              <SwipeableItem
                 key={item.id}
-                className="p-3.5 rounded-2xl bg-surface-level2 border border-outline/30 flex items-center justify-between"
+                title={item.title}
+                onErase={() => handleEraseTimelineItem(item)}
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: item.color }}
-                  />
-                  <div>
-                    <p className="text-sm font-bold text-on-surface">{item.title}</p>
-                    <p className="text-xs text-on-surface-variant">{item.subtitle}</p>
+                <div className="p-3.5 rounded-2xl bg-surface-level2 border border-outline/30 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <div>
+                      <p className="text-sm font-bold text-on-surface">{item.title}</p>
+                      <p className="text-xs text-on-surface-variant">{item.subtitle}</p>
+                    </div>
                   </div>
+                  <span className="text-[11px] font-bold text-on-surface-variant">Today</span>
                 </div>
-                <span className="text-[11px] font-bold text-on-surface-variant">Today</span>
-              </div>
+              </SwipeableItem>
             ))}
           </div>
         )}
