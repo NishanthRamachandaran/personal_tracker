@@ -7,9 +7,10 @@ import { useMoodLogs } from "@/hooks/useMoodLogs";
 import { useHealthLogs } from "@/hooks/useHealthLogs";
 import { useStreaks } from "@/hooks/useStreaks";
 import { Card } from "@/components/ui/Card";
-import { User, Download, Moon, Trash2, LogOut, Check, Activity, CreditCard, Smile, HeartPulse, DollarSign } from "lucide-react";
+import { User, Download, Moon, Sun, Trash2, LogOut, Check, Activity, CreditCard, Smile, HeartPulse, DollarSign } from "lucide-react";
 import { CategoryType } from "@/types/database";
 import { SUPPORTED_CURRENCIES, getStoredCurrency, setStoredCurrency, CurrencyOption } from "@/utils/currencyFormatter";
+import { getStoredTheme, applyTheme, ThemeMode } from "@/utils/themeManager";
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,11 +25,19 @@ export const ProfilePage: React.FC = () => {
 
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyOption>(getStoredCurrency());
+  const [currentTheme, setCurrentTheme] = useState<ThemeMode>(getStoredTheme());
 
   useEffect(() => {
     const handleCurrencyChange = () => setSelectedCurrency(getStoredCurrency());
+    const handleThemeChange = () => setCurrentTheme(getStoredTheme());
+
     window.addEventListener("pulse_currency_changed", handleCurrencyChange);
-    return () => window.removeEventListener("pulse_currency_changed", handleCurrencyChange);
+    window.addEventListener("pulse_theme_changed", handleThemeChange);
+
+    return () => {
+      window.removeEventListener("pulse_currency_changed", handleCurrencyChange);
+      window.removeEventListener("pulse_theme_changed", handleThemeChange);
+    };
   }, []);
 
   const totalEntriesCount = habitLogs.length + expenses.length + moodLogs.length + healthLogs.length;
@@ -47,6 +56,11 @@ export const ProfilePage: React.FC = () => {
   const handleCurrencySelect = (currency: CurrencyOption) => {
     setStoredCurrency(currency);
     setSelectedCurrency(currency);
+  };
+
+  const handleThemeSelect = (mode: ThemeMode) => {
+    applyTheme(mode);
+    setCurrentTheme(mode);
   };
 
   const handleExportCSV = () => {
@@ -94,7 +108,7 @@ export const ProfilePage: React.FC = () => {
       <Card className="flex flex-wrap items-center justify-between gap-6 relative overflow-hidden">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-habit via-expense to-health p-0.5 shadow-glow-habit flex items-center justify-center">
-            <div className="w-full h-full bg-[#0D0D12] rounded-[22px] flex items-center justify-center">
+            <div className="w-full h-full bg-surface-level2 rounded-[22px] flex items-center justify-center">
               <User className="w-8 h-8 text-habit-primary" />
             </div>
           </div>
@@ -173,6 +187,47 @@ export const ProfilePage: React.FC = () => {
         </div>
       </Card>
 
+      {/* Theme Preference Settings */}
+      <Card className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-on-surface flex items-center gap-2">
+              {currentTheme === "dark" ? <Moon className="w-5 h-5 text-habit-primary" /> : <Sun className="w-5 h-5 text-habit-primary" />} Theme Mode
+            </h2>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              Choose between sleek dark mode or clean high-contrast light mode
+            </p>
+          </div>
+          <span className="text-xs font-bold text-habit-primary px-3 py-1 rounded-full bg-habit/20 capitalize">
+            {currentTheme} Mode
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => handleThemeSelect("dark")}
+            className={`p-4 rounded-2xl border text-xs font-bold transition-all flex items-center justify-center gap-2.5 ${
+              currentTheme === "dark"
+                ? "bg-habit/20 border-habit text-habit-primary shadow-glow-habit"
+                : "bg-surface-level2 border-outline/30 text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            <Moon className="w-4 h-4" /> Dark Theme (#0D0D12)
+          </button>
+
+          <button
+            onClick={() => handleThemeSelect("light")}
+            className={`p-4 rounded-2xl border text-xs font-bold transition-all flex items-center justify-center gap-2.5 ${
+              currentTheme === "light"
+                ? "bg-habit/20 border-habit text-habit-primary shadow-glow-habit"
+                : "bg-surface-level2 border-outline/30 text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            <Sun className="w-4 h-4" /> Light Theme (#F8FAFC)
+          </button>
+        </div>
+      </Card>
+
       {/* Currency Preference Settings */}
       <Card className="space-y-4">
         <div className="flex items-center justify-between">
@@ -215,19 +270,6 @@ export const ProfilePage: React.FC = () => {
         <h2 className="text-lg font-bold text-on-surface">Data Control & Settings</h2>
 
         <div className="space-y-3">
-          <div className="p-4 rounded-2xl bg-surface-level2 border border-outline/30 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Moon className="w-5 h-5 text-habit-primary" />
-              <div>
-                <p className="text-sm font-bold text-on-surface">Dark Theme (#0D0D12)</p>
-                <p className="text-xs text-on-surface-variant">Default active aesthetic</p>
-              </div>
-            </div>
-            <span className="text-xs font-bold text-habit-primary px-3 py-1 rounded-full bg-habit/20">
-              Active
-            </span>
-          </div>
-
           <button
             onClick={handleExportCSV}
             className="w-full p-4 rounded-2xl bg-surface-level2 hover:bg-surface-level3 border border-outline/30 text-on-surface font-bold text-xs flex items-center justify-center gap-2 transition-all"

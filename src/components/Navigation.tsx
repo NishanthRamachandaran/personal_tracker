@@ -1,15 +1,30 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, BarChart3, Calendar as CalendarIcon, User, Plus, Zap, Activity, CreditCard, Smile, HeartPulse } from "lucide-react";
+import { LayoutDashboard, BarChart3, Calendar as CalendarIcon, User, Plus, Zap, Activity, CreditCard, Smile, HeartPulse, Sun, Moon } from "lucide-react";
 import { useUIStore } from "@/store/useUIStore";
 import { useAuth } from "@/hooks/useAuth";
 import { useStreaks } from "@/hooks/useStreaks";
+import { getStoredTheme, applyTheme, ThemeMode } from "@/utils/themeManager";
 
 export const Navigation: React.FC = () => {
   const location = useLocation();
   const { openAddModal } = useUIStore();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { activeStreakCount } = useStreaks(user?.id || "");
+
+  const [theme, setTheme] = useState<ThemeMode>(getStoredTheme());
+
+  useEffect(() => {
+    const handleThemeChange = () => setTheme(getStoredTheme());
+    window.addEventListener("pulse_theme_changed", handleThemeChange);
+    return () => window.removeEventListener("pulse_theme_changed", handleThemeChange);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
+    applyTheme(nextTheme);
+    setTheme(nextTheme);
+  };
 
   if (location.pathname === "/onboarding" || location.pathname === "/auth") {
     return null;
@@ -25,15 +40,26 @@ export const Navigation: React.FC = () => {
   return (
     <>
       {/* Desktop Sidebar (visible >= 1024px) */}
-      <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 bg-[#0D0D12] border-r border-outline-variant/30 p-6 z-40">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-habit via-expense to-health flex items-center justify-center shadow-glow-habit">
-            <Zap className="w-6 h-6 text-background fill-background" />
+      <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 bg-surface-level1 border-r border-outline-variant/30 p-6 z-40">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-habit via-expense to-health flex items-center justify-center shadow-glow-habit">
+              <Zap className="w-6 h-6 text-background fill-background" />
+            </div>
+            <div>
+              <h1 className="text-xl font-extrabold tracking-tight text-on-surface">PULSE</h1>
+              <p className="text-[10px] text-on-surface-variant uppercase font-semibold">Command Center</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-on-surface">PULSE</h1>
-            <p className="text-[10px] text-on-surface-variant uppercase font-semibold">Command Center</p>
-          </div>
+
+          {/* Theme Mode Toggle */}
+          <button
+            onClick={toggleTheme}
+            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+            className="p-2.5 rounded-2xl bg-surface-level2 hover:bg-surface-level3 border border-outline/30 text-on-surface transition-all"
+          >
+            {theme === "dark" ? <Sun className="w-4 h-4 text-habit-primary" /> : <Moon className="w-4 h-4 text-habit" />}
+          </button>
         </div>
 
         {/* Quick Streak Badge */}
@@ -60,8 +86,8 @@ export const Navigation: React.FC = () => {
                 to={item.path}
                 className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${
                   isActive
-                    ? "bg-surface-level2 text-on-surface border border-white/10 shadow-sm"
-                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-level1"
+                    ? "bg-surface-level2 text-on-surface border border-outline/30 shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-level2"
                 }`}
               >
                 <Icon className={`w-5 h-5 ${isActive ? "text-habit" : ""}`} />
@@ -103,9 +129,21 @@ export const Navigation: React.FC = () => {
         </div>
       </aside>
 
+      {/* Mobile Top Theme Toggle (< 1024px) */}
+      <div className="lg:hidden fixed top-3 right-4 z-40">
+        <button
+          onClick={toggleTheme}
+          title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+          className="p-2.5 rounded-2xl bg-surface-level1/90 backdrop-blur-xl border border-outline/30 text-on-surface shadow-lg transition-all flex items-center gap-2 text-xs font-bold"
+        >
+          {theme === "dark" ? <Sun className="w-4 h-4 text-habit-primary" /> : <Moon className="w-4 h-4 text-habit" />}
+          <span>{theme === "dark" ? "Light" : "Dark"}</span>
+        </button>
+      </div>
+
       {/* Mobile Floating Bottom Navbar (< 1024px) */}
       <div className="lg:hidden fixed bottom-4 left-4 right-4 z-40">
-        <div className="glass-card bg-[#0D0D12]/90 backdrop-blur-xl border border-outline-variant/40 rounded-3xl p-2 px-4 flex items-center justify-between shadow-2xl">
+        <div className="glass-card bg-surface-level1/90 backdrop-blur-xl border border-outline-variant/40 rounded-3xl p-2 px-4 flex items-center justify-between shadow-2xl">
           {navItems.slice(0, 2).map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -119,20 +157,17 @@ export const Navigation: React.FC = () => {
                 }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="text-[10px]">{item.name}</span>
+                <span className="text-[10px] font-semibold">{item.name}</span>
               </Link>
             );
           })}
 
-          {/* Glowing FAB Button */}
+          {/* Central Floating Quick Add Button */}
           <button
             onClick={() => openAddModal("habits")}
-            className="w-13 h-13 -mt-6 rounded-full bg-gradient-to-r from-habit via-expense to-health p-[2px] shadow-glow-fab transition-transform active:scale-95"
-            aria-label="Add entry"
+            className="w-12 h-12 -mt-6 rounded-2xl bg-gradient-to-br from-habit via-expense to-health flex items-center justify-center text-background shadow-glow-habit active:scale-95 transition-all"
           >
-            <div className="w-full h-full bg-[#0D0D12] rounded-full flex items-center justify-center">
-              <Plus className="w-7 h-7 text-on-surface stroke-[2.5]" />
-            </div>
+            <Plus className="w-6 h-6 stroke-[3]" />
           </button>
 
           {navItems.slice(2, 4).map((item) => {
@@ -148,7 +183,7 @@ export const Navigation: React.FC = () => {
                 }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="text-[10px]">{item.name}</span>
+                <span className="text-[10px] font-semibold">{item.name}</span>
               </Link>
             );
           })}
