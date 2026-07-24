@@ -8,6 +8,7 @@ import { BarChartCard } from "@/components/charts/BarChartCard";
 import { DonutChartCard } from "@/components/charts/DonutChartCard";
 import { LineChartCard } from "@/components/charts/LineChartCard";
 import { ComboChartCard } from "@/components/charts/ComboChartCard";
+import { HabitHeatmap } from "@/components/HabitHeatmap";
 import { Card } from "@/components/ui/Card";
 import { BarChart3, TrendingUp, Sparkles, Activity, CreditCard, Smile, HeartPulse, Zap } from "lucide-react";
 import { CategoryType } from "@/types/database";
@@ -43,17 +44,31 @@ export const AnalyticsPage: React.FC = () => {
     };
   });
 
-  // 2. Expense Category Donut Data
-  const expenseCatMap: Record<string, number> = {};
-  expenses.forEach((e) => {
-    const name = e.expense_categories?.name || "Other";
-    expenseCatMap[name] = (expenseCatMap[name] || 0) + Number(e.amount);
+  // 2. Expense Spend Data
+  const expenseChartData = days.map((dateStr, idx) => {
+    const spent = expenses
+      .filter((e) => e.spent_on === dateStr)
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+    return {
+      day: dayNames[idx],
+      completionRate: Number(spent.toFixed(2)),
+    };
   });
 
-  const expensePieData = Object.entries(expenseCatMap).map(([name, value]) => ({ name, value }));
+  // 3. Category Expenses Donut Data
+  const categoryTotals: Record<string, number> = {};
+  expenses.forEach((e) => {
+    const catName = e.expense_categories?.name || "Other";
+    categoryTotals[catName] = (categoryTotals[catName] || 0) + Number(e.amount);
+  });
 
-  // 3. Mood Rating Line Data
-  const moodTrendData = days.map((dateStr, idx) => {
+  const expenseCategoryDonutData = Object.entries(categoryTotals).map(([name, value]) => ({
+    name,
+    value: Number(value.toFixed(2)),
+  }));
+
+  // 4. Mood Trend Data
+  const moodChartData = days.map((dateStr, idx) => {
     const log = moodLogs.find((m) => m.logged_on === dateStr);
     return {
       day: dayNames[idx],
@@ -61,19 +76,19 @@ export const AnalyticsPage: React.FC = () => {
     };
   });
 
-  // 4. Health Combo Data
-  const healthComboData = days.map((dateStr, idx) => {
+  // 5. Health Combo Chart Data
+  const healthChartData = days.map((dateStr, idx) => {
     const log = healthLogs.find((h) => h.logged_on === dateStr);
     return {
       day: dayNames[idx],
-      waterLiters: log ? Number((log.water_glasses * 0.25).toFixed(1)) : 2.0,
-      sleepHours: log ? Number(log.sleep_hours) : 7.0,
+      waterLiters: log ? Number((log.water_glasses * 0.25).toFixed(1)) : 0,
+      sleepHours: log ? Number(log.sleep_hours) : 0,
     };
   });
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 animate-fadeIn">
-      {/* Header & Controls */}
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -83,11 +98,11 @@ export const AnalyticsPage: React.FC = () => {
             </h1>
           </div>
           <p className="text-xs text-on-surface-variant mt-1">
-            Real data trends, compliance metrics, and automated insights
+            Deep dive data visualizations, correlation trends, and heatmap matrix
           </p>
         </div>
 
-        {/* Time Range Selector */}
+        {/* Time Range Filter Switcher */}
         <div className="flex items-center gap-1 p-1 bg-surface-level2 rounded-2xl border border-white/5">
           {(["week", "month", "year"] as const).map((range) => (
             <button
@@ -95,7 +110,7 @@ export const AnalyticsPage: React.FC = () => {
               onClick={() => setTimeRange(range)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all ${
                 timeRange === range
-                  ? "bg-habit text-background shadow-glow-habit"
+                  ? "bg-habit/20 text-habit-primary border border-habit/40"
                   : "text-on-surface-variant hover:text-on-surface"
               }`}
             >
@@ -140,64 +155,81 @@ export const AnalyticsPage: React.FC = () => {
           <div className="flex items-center gap-2 text-xs font-bold text-habit-primary uppercase tracking-wider mb-2">
             <Sparkles className="w-4 h-4" /> Habit Consistency
           </div>
-          <h3 className="text-lg font-extrabold text-on-surface">24% Higher Consistency</h3>
+          <p className="text-xl font-extrabold text-on-surface">
+            {habitChartData.reduce((acc, curr) => acc + curr.completionRate, 0) / 7 > 70 ? "High Consistency 🔥" : "Building Momentum ⚡"}
+          </p>
           <p className="text-xs text-on-surface-variant mt-1">
-            Your habit check-ins reached a peak 85% completion rate this week.
+            Weekly average habit completion rate is {Math.round(habitChartData.reduce((acc, curr) => acc + curr.completionRate, 0) / 7)}%.
           </p>
         </Card>
 
         <Card glowCategory="expenses">
           <div className="flex items-center gap-2 text-xs font-bold text-expense uppercase tracking-wider mb-2">
-            <TrendingUp className="w-4 h-4" /> Expense Dynamics
+            <TrendingUp className="w-4 h-4" /> Top Spend Driver
           </div>
-          <h3 className="text-lg font-extrabold text-on-surface">Top Category: Food</h3>
+          <p className="text-xl font-extrabold text-on-surface">
+            {expenseCategoryDonutData[0]?.name || "None"}
+          </p>
           <p className="text-xs text-on-surface-variant mt-1">
-            Food and coffee purchases represent 42% of total logged expenditure.
+            {expenseCategoryDonutData[0] ? `Total spent: ₹${expenseCategoryDonutData[0].value}` : "No expenses recorded this week."}
           </p>
         </Card>
 
         <Card glowCategory="health">
           <div className="flex items-center gap-2 text-xs font-bold text-health uppercase tracking-wider mb-2">
-            <HeartPulse className="w-4 h-4" /> Sleep & Mood Sync
+            <HeartPulse className="w-4 h-4" /> Wellness Correlation
           </div>
-          <h3 className="text-lg font-extrabold text-on-surface">Optimal Sleep Ratio</h3>
+          <p className="text-xl font-extrabold text-on-surface">Optimal Energy</p>
           <p className="text-xs text-on-surface-variant mt-1">
-            Days with &gt;7.5h sleep strongly correlate with a 5/5 "Great" mood score.
+            Hydration & sleep rates are positively correlated with mood ratings.
           </p>
         </Card>
       </div>
 
-      {/* Recharts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* 52-Week GitHub-Style Activity Matrix Heatmap */}
+      <Card>
+        <HabitHeatmap habitLogs={habitLogs} expenses={expenses} moodLogs={moodLogs} healthLogs={healthLogs} />
+      </Card>
+
+      {/* Recharts Analytics Visualization Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {(activeSegment === "all" || activeSegment === "habits") && (
           <BarChartCard
-            title="Habit Completion Rate (%)"
-            subtitle="Daily completion percentage across habits"
+            title="Weekly Habit Completion (%)"
+            subtitle="Percentage of target habits completed daily"
             data={habitChartData}
           />
         )}
 
         {(activeSegment === "all" || activeSegment === "expenses") && (
+          <BarChartCard
+            title="Daily Expense Spend (₹)"
+            subtitle="Total money spent per day"
+            data={expenseChartData}
+          />
+        )}
+
+        {(activeSegment === "all" || activeSegment === "expenses") && expenseCategoryDonutData.length > 0 && (
           <DonutChartCard
             title="Expense Category Breakdown"
-            subtitle="Total expenditure grouped by category"
-            data={expensePieData}
+            subtitle="Percentage share of expenses by category"
+            data={expenseCategoryDonutData}
           />
         )}
 
         {(activeSegment === "all" || activeSegment === "mood") && (
           <LineChartCard
-            title="Mood Rating Fluctuation"
-            subtitle="Daily emotional energy score (1-5)"
-            data={moodTrendData}
+            title="Mood Rating Trend (1-5)"
+            subtitle="Daily emotional state tracker"
+            data={moodChartData}
           />
         )}
 
         {(activeSegment === "all" || activeSegment === "health") && (
           <ComboChartCard
-            title="Health & Sleep Correlation"
-            subtitle="Water hydration (L) vs Sleep duration (hours)"
-            data={healthComboData}
+            title="Health: Hydration (L) vs Sleep (h)"
+            subtitle="Daily water intake liters and rest hours"
+            data={healthChartData}
           />
         )}
       </div>

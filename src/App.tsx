@@ -10,6 +10,7 @@ import { OnboardingPage } from "@/pages/Onboarding";
 import { AuthPage } from "@/pages/Auth";
 import { AddEntryModalLauncher } from "@/components/modals/AddEntryModalLauncher";
 import { MilestoneModalLauncher } from "@/components/modals/MilestoneModalLauncher";
+import { CommandPalette } from "@/components/CommandPalette";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
           </main>
           <AddEntryModalLauncher />
           <MilestoneModalLauncher />
+          <CommandPalette />
         </div>
       </BrowserRouter>
     </QueryClientProvider>

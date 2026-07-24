@@ -9,9 +9,9 @@ import { useStreaks } from "@/hooks/useStreaks";
 import { useUIStore } from "@/store/useUIStore";
 import { Card } from "@/components/ui/Card";
 import { ProgressRing } from "@/components/ui/ProgressRing";
-import { Activity, CreditCard, Smile, HeartPulse, Check, Plus, Calendar as CalendarIcon, Zap, ChevronRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Activity, CreditCard, Smile, HeartPulse, Check, Plus, Calendar as CalendarIcon, Zap, Command, Sparkles } from "lucide-react";
 import { formatCurrency } from "@/utils/currencyFormatter";
+import { playCheckmarkSound, playSuccessFanfare } from "@/utils/audioFeedback";
 
 export const DashboardPage: React.FC = () => {
   const { user, profile } = useAuth();
@@ -26,6 +26,11 @@ export const DashboardPage: React.FC = () => {
 
   const todayStr = new Date().toISOString().split("T")[0];
   const formattedDate = format(new Date(), "EEEE, MMM d");
+
+  const currentHour = new Date().getHours();
+  const timeGreeting =
+    currentHour < 12 ? "Good morning" : currentHour < 18 ? "Good afternoon" : "Good evening";
+  const timeEmoji = currentHour < 12 ? "🌅" : currentHour < 18 ? "☀️" : "🌙";
 
   // Habits Today Calculations
   const totalHabits = habits.length;
@@ -42,6 +47,17 @@ export const DashboardPage: React.FC = () => {
 
   // Health Today
   const healthToday = healthLogs.find((h) => h.logged_on === todayStr);
+
+  const handleToggleHabit = async (habitId: string) => {
+    const isDoneBefore = habitLogs.some((l) => l.habit_id === habitId && l.completed_on === todayStr);
+    playCheckmarkSound();
+
+    const res = await toggleHabit({ habitId });
+    if (!isDoneBefore && completedHabitsToday + 1 >= totalHabits && totalHabits > 0) {
+      playSuccessFanfare();
+    }
+    return res;
+  };
 
   // Today Snapshot timeline items
   const timeline: Array<{ id: string; type: string; title: string; subtitle: string; color: string }> = [];
@@ -77,26 +93,61 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 animate-fadeIn">
-      {/* Header */}
+      {/* Header with Time-Aware Greeting & Command Bar Hint */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">
             <CalendarIcon className="w-3.5 h-3.5 text-habit" /> {formattedDate}
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-on-surface tracking-tight">
-            Welcome back, {profile?.full_name?.split(" ")[0] || "User"} 👋
+            {timeGreeting}, {profile?.full_name?.split(" ")[0] || "User"} {timeEmoji}
           </h1>
-          <p className="text-xs text-on-surface-variant">
-            Here is your daily snapshot for habits, expenses, mood, and health.
+          <p className="text-xs text-on-surface-variant mt-0.5">
+            Here is your real-time snapshot for habits, expenses, mood, and health.
           </p>
         </div>
 
-        {/* Streak Counter Badge */}
-        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-surface-level2 border border-habit/30 shadow-glow-habit">
-          <Zap className="w-5 h-5 text-habit-primary stroke-[2.5]" />
+        <div className="flex items-center gap-3">
+          {/* Cmd + K Command Palette Hint Badge */}
+          <button
+            onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
+            className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-2xl bg-surface-level2 border border-outline/30 hover:border-habit/40 text-xs font-bold text-on-surface-variant transition-all"
+          >
+            <Command className="w-3.5 h-3.5 text-habit-primary" />
+            <span>Cmd + K</span>
+          </button>
+
+          {/* Active Streak Counter Badge */}
+          <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-surface-level2 border border-habit/30 shadow-glow-habit">
+            <Zap className="w-5 h-5 text-habit-primary stroke-[2.5]" />
+            <div>
+              <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Active Streak</p>
+              <p className="text-sm font-extrabold text-habit-primary">{activeStreakCount} Days</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Smart Daily AI Digest Banner */}
+      <div className="p-4 rounded-3xl bg-gradient-to-r from-habit/15 via-expense/10 to-health/15 border border-habit/30 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-habit/20 flex items-center justify-center text-habit-primary shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
           <div>
-            <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Active Streak</p>
-            <p className="text-sm font-extrabold text-habit-primary">{activeStreakCount} Days</p>
+            <p className="text-xs font-bold text-on-surface">
+              {habitPercent === 100
+                ? "🎯 Perfect Day! All habits completed 100%!"
+                : habitPercent > 0
+                ? `⚡ Great momentum! ${completedHabitsToday} of ${totalHabits} habits completed today.`
+                : "🚀 Ready to kickstart your day? Check off your first habit below!"}
+            </p>
+            <p className="text-[11px] text-on-surface-variant mt-0.5">
+              {expensesToday > 0
+                ? `Expenses today: ${formatCurrency(expensesToday)}.`
+                : "No expenses logged yet today."}
+              {moodToday ? ` • Mood: ${moodToday.mood_score}/5` : ""}
+            </p>
           </div>
         </div>
       </div>
@@ -217,15 +268,15 @@ export const DashboardPage: React.FC = () => {
             return (
               <div
                 key={habit.id}
-                onClick={() => toggleHabit({ habitId: habit.id })}
-                className={`p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+                onClick={() => handleToggleHabit(habit.id)}
+                className={`p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer active:scale-98 ${
                   isDone
-                    ? "bg-habit/10 border-habit/50"
+                    ? "bg-habit/10 border-habit/50 shadow-glow-habit"
                     : "bg-surface-level2 border-outline/30 hover:border-habit/30"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isDone ? "bg-habit text-background" : "bg-surface-bright text-on-surface-variant"}`}>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${isDone ? "bg-habit text-background shadow-glow-habit" : "bg-surface-bright text-on-surface-variant"}`}>
                     <Check className="w-5 h-5 stroke-[3]" />
                   </div>
                   <div>
@@ -244,49 +295,29 @@ export const DashboardPage: React.FC = () => {
 
       {/* Today's Activity Snapshot */}
       <Card className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-expense" />
-            <h2 className="text-lg font-bold text-on-surface">Today's Activity Timeline</h2>
-          </div>
-          <Link to="/calendar" className="text-xs font-bold text-expense flex items-center gap-1 hover:underline">
-            View History <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
+        <h2 className="text-lg font-bold text-on-surface">Today's Timeline Activity</h2>
         {timeline.length === 0 ? (
-          <div className="py-12 text-center space-y-3">
-            <div className="w-16 h-16 mx-auto rounded-3xl bg-surface-level2 flex items-center justify-center text-on-surface-variant">
-              <Zap className="w-8 h-8 opacity-40" />
-            </div>
-            <p className="text-sm font-bold text-on-surface-variant">No entries recorded yet today</p>
-            <p className="text-xs text-on-surface-variant/70 max-w-xs mx-auto">
-              Tap the center "+" button or any category card above to add your first check-in!
-            </p>
+          <div className="py-8 text-center text-on-surface-variant text-xs font-semibold">
+            No activity recorded today yet. Log a habit, expense, or mood above!
           </div>
         ) : (
-          <div className="space-y-3">
-            {timeline.map((entry) => (
+          <div className="space-y-2.5">
+            {timeline.map((item) => (
               <div
-                key={entry.id}
-                className="p-4 rounded-2xl bg-surface-level2 border border-outline/30 flex items-center justify-between hover:border-white/20 transition-all"
+                key={item.id}
+                className="p-3.5 rounded-2xl bg-surface-level2 border border-outline/30 flex items-center justify-between"
               >
-                <div className="flex items-center gap-3.5">
+                <div className="flex items-center gap-3">
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-background font-bold text-xs"
-                    style={{ backgroundColor: entry.color }}
-                  >
-                    ✓
-                  </div>
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: item.color }}
+                  />
                   <div>
-                    <h4 className="text-sm font-bold text-on-surface">{entry.title}</h4>
-                    <p className="text-xs text-on-surface-variant">{entry.subtitle}</p>
+                    <p className="text-sm font-bold text-on-surface">{item.title}</p>
+                    <p className="text-xs text-on-surface-variant">{item.subtitle}</p>
                   </div>
                 </div>
-
-                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-surface-bright text-on-surface-variant">
-                  Today
-                </span>
+                <span className="text-[11px] font-bold text-on-surface-variant">Today</span>
               </div>
             ))}
           </div>
