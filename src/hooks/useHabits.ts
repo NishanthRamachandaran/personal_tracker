@@ -56,7 +56,7 @@ export function useHabits(userId: string) {
   const queryClient = useQueryClient();
   const isDemo = !userId || userId === DEMO_USER_ID || userId === "demo-user-id-001";
 
-  // 1. Fetch Habits List
+  // 1. Fetch Habits List with matching UUID seeding
   const habitsQuery = useQuery({
     queryKey: ["habits", userId],
     queryFn: async (): Promise<Habit[]> => {
@@ -78,8 +78,9 @@ export function useHabits(userId: string) {
       if (!data || data.length === 0) {
         if (localHabits.length > 0) return localHabits;
 
-        // Auto-seed starter habits for new real user
+        // Auto-seed starter habits into Supabase with matching UUIDs for foreign key validity
         const seedHabits = INITIAL_HABITS.map((h) => ({
+          id: h.id,
           user_id: userId,
           name: h.name,
           icon: h.icon,
@@ -89,14 +90,20 @@ export function useHabits(userId: string) {
         }));
 
         const { data: inserted, error: insertErr } = await (supabase.from("habits") as any)
-          .insert(seedHabits)
+          .upsert(seedHabits, { onConflict: "id" })
           .select();
+
+        if (insertErr) {
+          console.error("[SUPABASE_SEED_HABITS_ERROR]", insertErr);
+        }
 
         if (!insertErr && inserted && inserted.length > 0) {
           saveLocalHabits(userId, inserted as Habit[]);
           return inserted as Habit[];
         }
-        return [];
+
+        saveLocalHabits(userId, INITIAL_HABITS.map(h => ({ ...h, user_id: userId })));
+        return INITIAL_HABITS.map(h => ({ ...h, user_id: userId }));
       }
 
       saveLocalHabits(userId, data as Habit[]);
@@ -105,7 +112,7 @@ export function useHabits(userId: string) {
     enabled: !!userId,
   });
 
-  // 2. Fetch Habit Logs (starts strictly EMPTY for real accounts)
+  // 2. Fetch Habit Logs
   const habitLogsQuery = useQuery({
     queryKey: ["habit_logs", userId],
     queryFn: async (): Promise<HabitLog[]> => {
@@ -123,13 +130,18 @@ export function useHabits(userId: string) {
       }
 
       const logs = (data as HabitLog[]) || [];
-      saveLocalLogs(userId, logs);
-      return logs;
+      // Combine Supabase logs and local logs to prevent missing logs
+      const combinedMap = new Map<string, HabitLog>();
+      [...localLogs, ...logs].forEach((l) => combinedMap.set(`${l.habit_id}_${l.completed_on}`, l));
+      const combined = Array.from(combinedMap.values());
+
+      saveLocalLogs(userId, combined);
+      return combined;
     },
     enabled: !!userId,
   });
 
-  // 3. Toggle Habit Log
+  // 3. Toggle Habit Log (Optimistic UI + foreign key valid DB insert)
   const toggleHabitMutation = useMutation({
     mutationFn: async ({ habitId, dateStr = getTodayStr() }: { habitId: string; dateStr?: string }) => {
       const currentLogs = habitLogsQuery.data || (isDemo ? DEMO_LOGS : getLocalLogs(userId));
@@ -142,7 +154,8 @@ export function useHabits(userId: string) {
         const updatedLogs = currentLogs.filter((l) => l.id !== existing.id);
         if (!isDemo) {
           saveLocalLogs(userId, updatedLogs);
-          await (supabase.from("habit_logs") as any).delete().eq("id", existing.id);
+          const { error } = await (supabase.from("habit_logs") as any).delete().eq("id", existing.id);
+          if (error) console.error("[SUPABASE_DELETE_HABIT_LOG_ERROR]", error);
         }
         return { action: "deleted", logs: updatedLogs };
       } else {
@@ -159,6 +172,22 @@ export function useHabits(userId: string) {
 
         if (!isDemo) {
           saveLocalLogs(userId, updatedLogs);
+
+          // Ensure habit exists in Supabase table before creating log
+          const targetHabit = (habitsQuery.data || []).find((h) => h.id === habitId);
+          if (targetHabit) {
+            await (supabase.from("habits") as any)
+              .upsert([{
+                id: targetHabit.id,
+                user_id: userId,
+                name: targetHabit.name,
+                icon: targetHabit.icon,
+                frequency: targetHabit.frequency,
+                reminder_time: targetHabit.reminder_time,
+                is_active: true,
+              }], { onConflict: "id" });
+          }
+
           const { data, error } = await (supabase.from("habit_logs") as any)
             .insert({ user_id: userId, habit_id: habitId, completed_on: dateStr })
             .select()
@@ -169,7 +198,7 @@ export function useHabits(userId: string) {
           } else {
             await (supabase as any).rpc("update_streak", { p_user_id: userId, p_category: "habits" });
             if (data) {
-              const finalLogs = [data as HabitLog, ...currentLogs];
+              const finalLogs = [data as HabitLog, ...currentLogs.filter(l => l.id !== newLog.id)];
               saveLocalLogs(userId, finalLogs);
               return { action: "created", logs: finalLogs };
             }
@@ -202,6 +231,7 @@ export function useHabits(userId: string) {
       }
 
       queryClient.setQueryData(["habit_logs", userId], nextLogs);
+      saveLocalLogs(userId, nextLogs);
       return { previousLogs };
     },
     onError: (_err, _vars, context) => {
@@ -218,8 +248,9 @@ export function useHabits(userId: string) {
   // 4. Create Habit
   const createHabitMutation = useMutation({
     mutationFn: async (habitData: { name: string; frequency?: "daily" | "weekly"; reminder_time?: string }) => {
+      const generatedId = crypto.randomUUID();
       const newHabit: Habit = {
-        id: crypto.randomUUID(),
+        id: generatedId,
         user_id: userId,
         name: habitData.name,
         icon: "activity",
@@ -232,6 +263,7 @@ export function useHabits(userId: string) {
       if (!isDemo) {
         const { data, error } = await (supabase.from("habits") as any)
           .insert({
+            id: generatedId,
             user_id: userId,
             name: habitData.name,
             frequency: habitData.frequency || "daily",
